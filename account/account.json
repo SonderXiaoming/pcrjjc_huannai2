@@ -1,1 +1,16 @@
-[]
+[    
+    {
+        "viewer_id" : 114514,
+        "account" : "渠道服uid",
+        "password" : "渠道服access_key",
+        "platform": 1,
+        "admin": 114514
+    },
+    {
+        "viewer_id" : 0,
+        "account": "b服账号",
+        "password": "b服密码",
+        "platform": 0,
+        "admin": 114514
+    }
+]
