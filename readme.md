@@ -12,7 +12,7 @@
 
 ### 对于b服和渠道服
 
-在account文件夹中按照模板改一下account.json
+在account文件夹中把account.json.sample改名为account.json后按照模板改一下
 
 渠道服自行抓包，有空可能写类似台服读xml，最好有人pr
 
