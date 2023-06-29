@@ -12,7 +12,7 @@
 
 ### 对于b服和渠道服
 
-在account文件夹中按照模板改一下account.json
+在account文件夹中把account.json.sample改名为account.json后按照模板改一下
 
 渠道服自行抓包，有空可能写类似台服读xml，最好有人pr
 
@@ -78,4 +78,3 @@ tool.py作为初始化数据库，有兴趣可以自行查看，比如导入旧�
 **[Syne-lucky](https://github.com/Syne-lucky/pcrjjc2/commits?author=Syne-lucky)**的**[pcrjjc2](https://github.com/Syne-lucky/pcrjjc2)**指令参考
 
 **[Mira19971102](https://github.com/Mira19971102)**台服账号提供
-
