@@ -28,8 +28,6 @@
 
 ### 你可能需要的额外配置
 
-client里面api.json设置自动过码api，不然b服没法用（原版手动过码不适合多服，你直接cv原版的过码应该勉强能用，等pr。懒得搞）
-
 client里面proxy.json设置代理，不然台服可能被墙
 
 var.py里面BaseSet设置私聊上限
