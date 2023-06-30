@@ -26,9 +26,10 @@ def get_platform_id(ev: CQEvent) -> int:
 
 def get_qid(ev: CQEvent) -> int:
     qid = ev.user_id
-    if ev.message[0].type == 'at':
-        if ev.message[0].data['qq'] != 'all':
-            qid = int(ev.message[0].data['qq'])
+    for message in ev.message:
+        if message.type == 'at':
+            if message.data['qq'] != 'all':
+                return int(message.data['qq'])
     return qid
 
 def get_tw_platform(pcrid:int) -> str:
@@ -81,9 +82,10 @@ async def detial_query(data):
     bot = data["bot"]
     ev = data["ev"]
     pcrid = data["uid"]
+    platfrom = data["platform"]
     try:
         logger.info('开始生成竞技场查询图片...')  # 通过log显示信息
-        result_image = await generate_info_pic(res, pcrid)
+        result_image = await generate_info_pic(res, pcrid, platfrom)
         result_image = pic2b64(result_image)  # 转base64发送，不用将图片存本地
         result_image = MessageSegment.image(result_image)
         result_support = await generate_support_pic(res, pcrid)

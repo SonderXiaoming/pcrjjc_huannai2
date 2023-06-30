@@ -6,12 +6,19 @@ from pathlib import Path
 import zhconv
 from hoshino.aiorequests import run_sync_func
 from hoshino import util
+from ..var import Platform
 
 path = Path(__file__).parent # 获取文件所在目录的绝对路径
 font_cn_path = str(path / 'fonts' / 'SourceHanSansCN-Medium.otf')  # Path是路径对象，必须转为str之后ImageFont才能读取
 font_tw_path = str(path / 'fonts' / 'pcrtwfont.ttf')
 
-server_name = 'bilibili官方服务器' # 设置服务器名称
+def get_server(platform:int)-> str:
+    if platform == Platform.b_id.value:
+        return 'bilibili官方服务器' 
+    elif platform == Platform.qu_id.value:
+        return '渠道服第三方服务器' 
+    else:
+        return "台服"
 
 def get_frame(user_id):
     current_dir = path / 'frame.json'
@@ -36,7 +43,7 @@ def _cut_str(obj: str, sec: int):
     """
     return [obj[i: i+sec] for i in range(0, len(obj), sec)]
 
-def _generate_info_pic_internal(data, uid):
+def _generate_info_pic_internal(data, uid, platform):
     '''
     个人资料卡生成
     '''
@@ -95,7 +102,7 @@ def _generate_info_pic_internal(data, uid):
         draw.text((170, 310 + (index * 22)), value, font_black, font_resize)
     draw.text((34, 350), last_login_time_text[0] + "\n" +
               last_login_time_text[1], font_black, font_resize)
-    draw.text((34, 392), server_name, font_black, font_resize)
+    draw.text((34, 392), get_server(platform), font_black, font_resize)
 
     # 资料卡 冒险经历
     normal_quest_text = _TraditionalToSimplified(

@@ -129,10 +129,13 @@ async def login_all():
                 loop.create_task(_query(client, 2))
         else:
             client = pcrclient(bsdkclient(i.account, i.password, i.platform))
+        
+        """
         try:
             await client.login()
         except:
             logger.warn(f"ID{int(i.viewer_id) or i.account}, 服务器：{platform_dict.get(i.platform, 'B服')}加载失败，后续会尝试自动重连")
+        """
         
         if i.platform != Platform.tw_id.value:
             if not queue_dict[i.platform]:

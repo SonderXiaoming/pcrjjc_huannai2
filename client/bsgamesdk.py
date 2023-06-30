@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 import hashlib
@@ -12,26 +13,66 @@ from os.path import join, dirname
 bililogin = "https://line1-sdk-center-login-sh.biligame.net/"
 header = {"User-Agent": "Mozilla/5.0 BSGameSDK", "Content-Type": "application/x-www-form-urlencoded",
           "Host": "line1-sdk-center-login-sh.biligame.net"}
+captcha_header = {"Content-Type": "application/json",
+                  "User-Agent": "pcrjjc2/1.0.0"}
 
 
 async def sendpost(url, data):
     async with httpx.AsyncClient() as client:
         return (await client.post(url=url, data=data, headers=header, timeout=20)).json()
 
-async def captchaVerifier(*args):
+
+async def captchaVerifier(gt, challenge, userid):
+    async with httpx.AsyncClient(timeout=30) as AsyncClient:
+        try:
+            res = await AsyncClient.get(url=f"https://pcrd.tencentbot.top/geetest_renew?captcha_type=1&challenge={challenge}&gt={gt}&userid={userid}&gs=1", headers=captcha_header)
+            res = res.json()
+            uuid = res["uuid"]
+            ccnt = 0
+            while (ccnt := ccnt + 1) < 10:
+                res = await AsyncClient.get(url=f"https://pcrd.tencentbot.top/check/{uuid}", headers=captcha_header)
+                res = res.json()
+
+                if "queue_num" in res:
+                    tim = min(int(res['queue_num']), 3) * 10
+                    logger.info(f"过码排队，当前有{res['queue_num']}个在前面，等待{tim}s")
+                    await asyncio.sleep(tim)
+                    continue
+
+                info = res["info"]
+                if 'validate' in info:
+                    return info["challenge"], info["gt_user_id"], info["validate"]
+
+                if res["info"] in ["fail", "url invalid"]:
+                    raise Exception(f"自动过码失败")
+
+                if res["info"] == "in running":
+                    logger.info(f"正在过码。等待5s")
+                    await asyncio.sleep(5)
+
+            raise Exception(f"自动过码多次失败")
+
+        except Exception as e:
+            raise Exception(f"自动过码异常，{e}")
+
+
+async def captchaVerifier2(*args):
+    """
+    token的自动过码
+    """
     with open(join(join(dirname(__file__), 'api.json'), )) as fp:
         api: dict = load(fp)
     gt = args[0]
     challenge = args[1]
     try:
         async with httpx.AsyncClient() as AsyncClient:
-            res = await AsyncClient.get(url=f"{api['api']}&gt={gt}&challenge={challenge}", timeout = 30)
+            res = await AsyncClient.get(url=f"{api['api']}&gt={gt}&challenge={challenge}", timeout=30)
             res = json.loads(res.content)
             if res.get("code", -1) != 0:
                 raise Exception(f'{res}')
-            return res["data"]["validate"]
+            return challenge, args[2], res["data"]["validate"]
     except Exception as e:
-        raise Exception(f"自动过码异常：{e}")
+        raise Exception(f"自动过码异常，{e}")
 
 
 def setsign(data):
@@ -75,25 +116,24 @@ async def _login(account, password, challenge="", gt_user="", validate=""):
 
 
 async def login(bili_account, bili_pwd):
-    logger.info(f'logging in with acc={bili_account}, pwd={bili_pwd}')
+    logger.info(f'logging in with acc={bili_account}, pwd = {bili_pwd}')
     login_sta = await _login(bili_account, bili_pwd)
     if login_sta.get("message", "") == "用户名或密码错误":
         raise Exception("用户名或密码错误")
-
-    if "access_key" in login_sta:
-        logger.info("无需验证码登录成功")
+    if login_sta['code'] == 200000:  # secondary verify
+        cap = await sendpost(bililogin+"api/client/start_captcha", setsign(json.loads(modolcaptch)))
+        challenge, gt_user_id, captch_done = await captchaVerifier(cap['gt'], cap['challenge'], cap['gt_user_id'])
+        login_sta = await _login(bili_account, bili_pwd, challenge, gt_user_id, captch_done)
+        if login_sta.get("message", "") == "用户名或密码错误":
+            raise Exception("用户名或密码错误")
         return login_sta
-
-    logger.info("触发验证码，尝试过码")
-    # start_captcha_input
-    cap = await sendpost(bililogin + "api/client/start_captcha", setsign(json.loads(modolcaptch)))
-    validate_key = await captchaVerifier(cap['gt'], cap['challenge'], cap['gt_user_id'])
-    return await _login(bili_account, bili_pwd, cap["challenge"], cap['gt_user_id'], validate_key)
+    else:
+        return login_sta
 
 
 class bsdkclient:
 
-    def __init__(self, account: str, password:str, platform: int):
+    def __init__(self, account: str, password: str, platform: int):
         self.account = account
         self.password = password
         self.qudao = platform
