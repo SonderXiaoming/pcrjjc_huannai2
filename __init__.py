@@ -421,15 +421,16 @@ async def on_query_arena_all(bot: HoshinoBot, ev: CQEvent):
     qid = get_qid(ev)
     platform_id = get_platform_id(ev)
     user_bind: List[PCRBind] = await pcr_sqla.get_bind(platform_id, qid)
-    if not user_bind:
-        await bot.send(ev, '您还未绑定竞技场', at_sender=True)
-        return
-    if len(user_bind) < int(id) and len(id) == 1:
-        await bot.send(ev, '输入的序号超出范围，可发送竞技场查询查看你的绑定', at_sender=True)
-        return
-    bind = [PCRBind(platform=platform_id, pcrid=int(id))] if len(
+    if len(id) == 1:
+        if not user_bind:
+            await bot.send(ev, '您还未绑定竞技场', at_sender=True)
+            return
+        if len(user_bind) < int(id):
+            await bot.send(ev, '输入的序号超出范围，可发送竞技场查询查看你的绑定', at_sender=True)
+            return
+    bind = PCRBind(platform=platform_id, pcrid=int(id)) if len(
         id) > 1 else user_bind[int(id) - 1]
-    await query_all([bind], detial_query, {"bot": bot, "ev": ev}, Priority.detial_query.value)
+    await query_all([bind], platform_id, detial_query, {"bot": bot, "ev": ev, "platform":platform_id}, Priority.detial_query.value)
 
 
 @sv_b.on_prefix('竞技场换头像框', '更换竞技场头像框', '更换头像框')
