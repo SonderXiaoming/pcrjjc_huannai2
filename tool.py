@@ -5,7 +5,7 @@ import glob
 from .database.dal import pcr_sqla
 from .client.playerpref import decryptxml
 account_path = join(dirname(__file__), "account")
-with open(join(account_path, 'account.json')) as fp:
+with open(join(account_path, 'account.json'), encoding="utf-8") as fp:
     acinfo: list = load(fp)
 
 xml_files = glob.glob(join(account_path, "*.xml"))
