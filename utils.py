@@ -4,6 +4,7 @@ from datetime import datetime
 import traceback
 from typing import List
 from .img.text2img import image_draw
+from hoshino import util
 from hoshino.util import pic2b64
 from .database.dal import JJCHistory, pcr_sqla, PCRBind
 from .query import query_all
@@ -109,7 +110,7 @@ async def user_query(data: dict):
         jjc_up, grand_jjc_up = await pcr_sqla.get_up_num(platfrom, pcrid, int(datetime.now().timestamp()))
         extra = "" if platfrom != Platform.tw_id.value else f"服务器：{get_tw_platform(pcrid)}\n"
         extra += f'''上升: {jjc_up}次 / {grand_jjc_up}次\n'''
-        query = f'【{info[pcrid]+1}】{res["user_name"]}\n{res["arena_rank"]}({res["arena_group"]}场) / {res["grand_arena_rank"]}({res["grand_arena_group"]}场)\n{extra}最近上号{last_login}\n\n'
+        query = f'【{info[pcrid]+1}】{util.filt_message(str(res["user_name"]))}\n{res["arena_rank"]}({res["arena_group"]}场) / {res["grand_arena_rank"]}({res["grand_arena_group"]}场)\n{extra}最近上号{last_login}\n\n'
     except:
         logger.error(traceback.print_exc())
         query = "查询失败"
@@ -140,7 +141,7 @@ async def bind_pcrid(data):
         elif pcrid in [bind.pcrid for bind in have_bind]:
             reply = '这个uid您已经订阅过了，不要重复订阅！'
         else:
-            info["name"] = info["name"] if info["name"] else res["user_name"]
+            info["name"] = info["name"] if info["name"] else util.filt_message(str((res["user_name"])))
             await pcr_sqla.insert_bind(info)
             reply = '添加成功！已为您开启群聊推送！'
     except:
