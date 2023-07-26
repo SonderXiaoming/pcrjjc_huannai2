@@ -74,8 +74,8 @@ private_dict = {
 }
 
 platform_dict = {
-    Platform.qu_id.value: "渠道服",
-    Platform.tw_id.value: "台服",
+    Platform.qu_id.value: "渠",
+    Platform.tw_id.value: "台",
     "渠": Platform.qu_id.value,
     "台": Platform.tw_id.value
 }
