@@ -40,6 +40,18 @@ var.py里面BaseSet设置私聊上限
 
 tool.py作为初始化数据库，有兴趣可以自行查看，比如导入旧版的绑定之类的小功能，自行使用
 
+### 手动过码：
+
+当自动过码失效时，会进入手动过码状态状态，bot会私信管理员进行手动过码，完成网页过码后即可
+
+1. 需要部署属于自己的[vercel-captcha-helper](https://github.com/watermellye/vercel-captcha-helper)，一定要按照说明一步步完成
+
+2. 确保你本机、bot所在的服务器都能访问你自己部署的过码服务网页
+
+3. 修改client\bsgamesdk.py，讲`manual_captch_site`修改为你自己部署的过码服务网页
+
+如果不配置或配置错误，本程序手动过码将无效
+
 ## 功能：
 
 1）自动过验证码
@@ -59,11 +71,9 @@ tool.py作为初始化数据库，有兴趣可以自行查看，比如导入旧�
 # TODO：（等pr）
 
 1. 代码优化，之前以为四个服务器合一块的，谁知道台一不变。后来临时加了许多垃圾代码，有人急着要
-
 2. requirements文件
 3. 渠道服xml支持（懒得写了，我会是会，不如直接抓包方便）
-4. b服手动过码（应该写成类似gocq的形式，自动上传，有多少个号就滑多少次，和bot私聊需要等超时加锁之类的并不方便，听说cq还有私聊bug）
-5. 有没有大佬能搞日服（好像说几乎不可能）
+4. 有没有大佬能搞日服（好像说几乎不可能）
 
 ## 特别感谢
 
@@ -76,3 +86,5 @@ tool.py作为初始化数据库，有兴趣可以自行查看，比如导入旧�
 **[Syne-lucky](https://github.com/Syne-lucky/pcrjjc2/commits?author=Syne-lucky)**的**[pcrjjc2](https://github.com/Syne-lucky/pcrjjc2)**指令参考
 
 **[Mira19971102](https://github.com/Mira19971102)**台服账号提供
+
+**[怡宝](https://github.com/watermellye)**的**[vercel-captcha-helper](https://github.com/watermellye/vercel-captcha-helper)**手动过码

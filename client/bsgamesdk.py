@@ -8,6 +8,8 @@ from nonebot import logger
 import httpx
 from json import load
 from os.path import join, dirname
+from ...multicq_send import group_send, private_send
+import hoshino
 
 
 bililogin = "https://line1-sdk-center-login-sh.biligame.net/"
@@ -16,11 +18,16 @@ header = {"User-Agent": "Mozilla/5.0 BSGameSDK", "Content-Type": "application/x-
 captcha_header = {"Content-Type": "application/json",
                   "User-Agent": "pcrjjc2/1.0.0"}
 
+# 手动过码时限（秒）
+gt_wait = 90
+
+# 手动过码网站地址
+manual_captch_site = "https://yousite.com"
+
 
 async def sendpost(url, data):
     async with httpx.AsyncClient() as client:
         return (await client.post(url=url, data=data, headers=header, timeout=20)).json()
-
 
 async def captchaVerifier(gt, challenge, userid):
     async with httpx.AsyncClient(timeout=30) as AsyncClient:
@@ -122,15 +129,23 @@ async def login(bili_account, bili_pwd):
         raise Exception("用户名或密码错误")
     if login_sta['code'] == 200000:  # secondary verify
         cap = await sendpost(bililogin+"api/client/start_captcha", setsign(json.loads(modolcaptch)))
-        challenge, gt_user_id, captch_done = await captchaVerifier(cap['gt'], cap['challenge'], cap['gt_user_id'])
+        # 尝试自动过码
+        try:
+            challenge, gt_user_id, captch_done = await captchaVerifier(cap['gt'], cap['challenge'], cap['gt_user_id'])
+        except Exception as e:
+            logger.error(f'自动过码失败: {e}，尝试手动过码')
+            # 尝试手动过码
+            try:
+                qqid = hoshino.config.SUPERUSERS[0]
+                challenge, gt_user_id, captch_done = await manual_captch(cap['challenge'], cap['gt'], cap['gt_user_id'], qqid, bili_account)
+            except Exception as e:
+                raise Exception(f'手动过码失败: {e}')      
         login_sta = await _login(bili_account, bili_pwd, challenge, gt_user_id, captch_done)
         if login_sta.get("message", "") == "用户名或密码错误":
             raise Exception("用户名或密码错误")
         return login_sta
     else:
         return login_sta
-
-
 class bsdkclient:
 
     def __init__(self, account: str, password: str, platform: int):
@@ -151,3 +166,30 @@ class bsdkclient:
                     return resp['uid'], resp['access_key']
         elif self.qudao == 1:
             return self.account, self.password
+
+async def manual_captch_listener(user_id:str):
+    while True:
+        async with httpx.AsyncClient() as client:
+            url = f'{manual_captch_site}/api/block?userid={user_id}'
+            try:
+                response = await client.get(url, timeout=28)
+            except httpx.TimeoutException as e:
+                pass
+            else:
+                if response.status_code == 200:
+                    res = response.json()
+                    return res["validate"]
+
+async def manual_captch(challenge:str, gt:str, user_id:str, qqid:int, bili_account):
+    url = f"{manual_captch_site}/?captcha_type=1&challenge={challenge}&gt={gt}&userid={user_id}&gs=1"
+    await private_send(qqid, f'pcr账号{bili_account}登录触发验证码，请在{gt_wait}秒内完成以下链接中的验证内容。')
+    await private_send(qqid, url)
+    
+    try:
+        return (challenge, user_id, await asyncio.wait_for(manual_captch_listener(user_id), gt_wait))
+    except asyncio.TimeoutError:
+        await private_send(qqid, "手动过码获取结果超时")
+        raise RuntimeError("手动过码获取结果超时")
+    except Exception as e:
+        await private_send(qqid, f'手动过码获取结果异常：{e}')
+        raise e
