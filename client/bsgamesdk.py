@@ -21,6 +21,9 @@ captcha_header = {"Content-Type": "application/json",
 # 手动过码时限（秒）
 gt_wait = 90
 
+# 手动过码网站地址
+manual_captch_site = "https://yousite.com"
+
 
 async def sendpost(url, data):
     async with httpx.AsyncClient() as client:
@@ -167,7 +170,7 @@ class bsdkclient:
 async def manual_captch_listener(user_id:str):
     while True:
         async with httpx.AsyncClient() as client:
-            url = f'https://www.abc.com/api/block?userid={user_id}'
+            url = f'{manual_captch_site}/api/block?userid={user_id}'
             try:
                 response = await client.get(url, timeout=28)
             except httpx.TimeoutException as e:
@@ -178,7 +181,7 @@ async def manual_captch_listener(user_id:str):
                     return res["validate"]
 
 async def manual_captch(challenge:str, gt:str, user_id:str, qqid:int, bili_account):
-    url = f"https://www.abc.com/?captcha_type=1&challenge={challenge}&gt={gt}&userid={user_id}&gs=1"
+    url = f"{manual_captch_site}/?captcha_type=1&challenge={challenge}&gt={gt}&userid={user_id}&gs=1"
     await private_send(qqid, f'pcr账号{bili_account}登录触发验证码，请在{gt_wait}秒内完成以下链接中的验证内容。')
     await private_send(qqid, url)
     

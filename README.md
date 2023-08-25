@@ -48,7 +48,7 @@ tool.py作为初始化数据库，有兴趣可以自行查看，比如导入旧�
 
 2. 确保你本机、bot所在的服务器都能访问你自己部署的过码服务网页
 
-3. 修改client\bsgamesdk.py，把底部两处的`www.abc.com`修改为你自己部署的过码服务网页
+3. 修改client\bsgamesdk.py，讲`manual_captch_site`修改为你自己部署的过码服务网页
 
 如果不配置或配置错误，本程序手动过码将无效
 
@@ -86,3 +86,5 @@ tool.py作为初始化数据库，有兴趣可以自行查看，比如导入旧�
 **[Syne-lucky](https://github.com/Syne-lucky/pcrjjc2/commits?author=Syne-lucky)**的**[pcrjjc2](https://github.com/Syne-lucky/pcrjjc2)**指令参考
 
 **[Mira19971102](https://github.com/Mira19971102)**台服账号提供
+
+**[怡宝](https://github.com/watermellye)**的**[vercel-captcha-helper](https://github.com/watermellye/vercel-captcha-helper)**手动过码
