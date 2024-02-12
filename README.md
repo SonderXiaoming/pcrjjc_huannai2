@@ -81,7 +81,7 @@ tool.py作为初始化数据库，有兴趣可以自行查看，比如导入旧�
 
 **[azmiao](https://github.com/azmiao/pcrjjc_tw_new/commits?author=azmiao)**的**[pcrjjc_tw_new](https://github.com/azmiao/pcrjjc_tw_new)**台服支持
 
-**[infinityedge01](https://github.com/azmiao/pcrjjc_tw_new/commits?author=infinityedge01)**的**[Luna](https://github.com/infinityedge01/qqbot2/tree/main/hoshino/modules/Luna) **渠道服支持
+**[infinityedge01](https://github.com/infinityedge01)**的**[Luna](https://github.com/infinityedge01/qqbot2/tree/main/hoshino/modules/Luna) **渠道服支持
 
 **[Syne-lucky](https://github.com/Syne-lucky/pcrjjc2/commits?author=Syne-lucky)**的**[pcrjjc2](https://github.com/Syne-lucky/pcrjjc2)**指令参考
 
