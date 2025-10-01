@@ -14,6 +14,10 @@ import httpx
 import random
 from nonebot import logger
 
+import time
+import json
+
+curpath = dirname(__file__)
 
 class ApiException(Exception):
 
@@ -41,7 +45,21 @@ def get_api_root(qudao):
         )
 
 
-config = join(dirname(__file__), "version.txt")
+config = join(curpath, "version.txt")
+
+def init_device_id(clear_id = False):
+    with open(join(curpath, 'api.json'), 'r', encoding='UTF-8') as f:
+        js = json.load(f)
+    device_id = js['DEVICE-ID']
+    if device_id == '' or clear_id:
+        current_timestamp = time.time()
+        timestamp_str = str(current_timestamp).encode('utf-8')
+        device_id = md5(timestamp_str).hexdigest()
+        logger.info(f'设备id已更新：{device_id}')
+        js['DEVICE-ID'] = device_id
+        with open(join(curpath, 'api.json'), 'w', encoding='UTF-8') as f:
+            json.dump(js, f, indent=4, ensure_ascii=False)
+    return device_id
 
 defaultHeaders = {
     "Accept-Encoding": "gzip",
@@ -51,7 +69,7 @@ defaultHeaders = {
     "BATTLE-LOGIC-VERSION": "4",
     "BUNDLE-VER": "",
     "DEVICE": "2",
-    "DEVICE-ID": "7b1703a5d9b394e24051d7a5d4818f17",
+    "DEVICE-ID": init_device_id(),
     "DEVICE-NAME": "OPPO PCRT00",
     "EXCEL-VER": "1.0.0",
     "GRAPHICS-DEVICE-NAME": "Adreno (TM) 640",
@@ -234,3 +252,4 @@ class pcrclient:
         await self.check_gamestart()
 
         # await self.callapi('/check/check_agreement', {})
+

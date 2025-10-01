@@ -16,6 +16,8 @@ from .tool import refresh_account
 from .img.text2img import image_draw
 from .database.dal import pcr_sqla, PCRBind
 
+from .client.pcrclient import init_device_id
+
 sv_b = Service('b服竞技场推送', help_="发送【竞技场帮助】", bundle='pcr查询')
 sv_qu = Service('渠服竞技场推送', help_="发送【渠竞技场帮助】", bundle='pcr查询')
 sv_tw = Service('台服竞技场推送', help_="发送【台竞技场帮助】", bundle='pcr查询')
@@ -498,3 +500,9 @@ async def leave_notice(session: NoticeSession):
         bot = get_bot()
         await pcr_sqla.delete_bind(uid, group=gid)
         await bot.send_group_msg(group_id=gid, message=f'{uid}退群了，已自动删除其绑定在本群的竞技场订阅推送')
+
+
+@on_command('update_device_id', aliases=('pcrjjc换设备id', 'pcrjjc更新设备id'), only_to_me=False)
+async def update_device_id(session: NoticeSession):
+    init_device_id(clear_id = True)
+    await session.send('pcrjjc更新设备id成功！重启bot生效新设备id')
