@@ -48,7 +48,7 @@ def get_api_root(qudao):
 config = join(curpath, "version.txt")
 
 def init_device_id(clear_id = False):
-    with open(join(curpath, 'api.json'), 'r', encoding='UTF-8') as f:
+    with open(join(curpath, 'device.json'), 'r', encoding='UTF-8') as f:
         js = json.load(f)
     device_id = js['DEVICE-ID']
     if device_id == '' or clear_id:
@@ -57,7 +57,7 @@ def init_device_id(clear_id = False):
         device_id = md5(timestamp_str).hexdigest()
         logger.info(f'设备id已更新：{device_id}')
         js['DEVICE-ID'] = device_id
-        with open(join(curpath, 'api.json'), 'w', encoding='UTF-8') as f:
+        with open(join(curpath, 'device.json'), 'w', encoding='UTF-8') as f:
             json.dump(js, f, indent=4, ensure_ascii=False)
     return device_id
 
