@@ -502,7 +502,7 @@ async def leave_notice(session: NoticeSession):
         await bot.send_group_msg(group_id=gid, message=f'{uid}退群了，已自动删除其绑定在本群的竞技场订阅推送')
 
 
-@on_command('update_device_id', aliases=('pcrjjc换设备id', 'pcrjjc更新设备id'), only_to_me=False)
+@sv.on_command('update_device_id', aliases=('pcrjjc换设备id', 'pcrjjc更新设备id'), only_to_me=False)
 async def update_device_id(session: NoticeSession):
     init_device_id(clear_id = True)
     await session.send('pcrjjc更新设备id成功！重启bot生效新设备id')
