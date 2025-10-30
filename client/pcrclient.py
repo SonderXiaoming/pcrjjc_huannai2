@@ -232,6 +232,11 @@ class pcrclient:
         )
         if "is_risk" in lres and lres["is_risk"] == 1:
             raise ApiException("账号存在风险", 403)
+        if "maintenance_message" in lres:
+            match = re.search(
+                "\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d", lres["maintenance_message"]
+            ).group()
+            raise ApiException("服务器在维护", parse(match))
         self.viewer_id = data_headers["viewer_id"]
 
     async def login(self):
@@ -243,11 +248,11 @@ class pcrclient:
         manifest = await self.callapi(
             "/source_ini/get_maintenance_status?format=json", {}, False, noerr=True
         )
-        if "maintenance_message" in manifest:
+        '''if "maintenance_message" in manifest:
             match = re.search(
                 "\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d", manifest["maintenance_message"]
             ).group()
-            raise ApiException("服务器在维护", parse(match))
+            raise ApiException("服务器在维护", parse(match))'''
 
         ver = manifest["required_manifest_ver"]
         logger.info(f"using manifest ver = {ver}")
