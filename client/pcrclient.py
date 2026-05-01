@@ -4,7 +4,7 @@ from msgpack import packb, unpackb
 import asyncio
 from random import randint
 from json import loads
-from hashlib import md5
+from hashlib import md5, sha256
 from Crypto.Cipher import AES
 from base64 import b64encode, b64decode
 from .bsgamesdk import bsdkclient
