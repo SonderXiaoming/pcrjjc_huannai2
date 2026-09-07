@@ -11,6 +11,7 @@ from ..var import Platform
 path = Path(__file__).parent # 获取文件所在目录的绝对路径
 font_cn_path = str(path / 'fonts' / 'SourceHanSansCN-Medium.otf')  # Path是路径对象，必须转为str之后ImageFont才能读取
 font_tw_path = str(path / 'fonts' / 'pcrtwfont.ttf')
+TALENT_QUEST_IMG = ('fire.png', 'water.png', 'wind.png', 'light.png', 'darkness.png')
 
 def get_server(platform:int)-> str:
     if platform == Platform.b_id.value:
@@ -265,8 +266,46 @@ def _generate_support_pic_internal(data, uid):
     
     return im
 
+def _generate_talent_pic_internal(data, knight_rank):
+    '''
+    深域进度图片合成
+    '''
+    im = Image.open(path / 'img' / 'background.png').convert('RGBA')
+    fnt = ImageFont.truetype(font=font_cn_path, size=40)
+    rgb = ImageColor.getrgb('#4e4e4e')
+    rgb_w = ImageColor.getrgb('#ffffff')
+    quest_draw = ImageDraw.Draw(im)
+
+    for talent in data['quest_info']['talent_quest']:
+        quest = '1-1'
+        clear_count = int(talent['clear_count'])
+        if clear_count:
+            quest_num = clear_count % 10 or 10
+            quest = f'{(clear_count - 1) // 10 + 1}-{quest_num}'
+
+        talent_id = int(talent['talent_id'])
+        bbox = (320 * talent_id - 120, 290)
+        xy = (320 * talent_id - 40, 650)
+        item_img = Image.open(path / 'img' / TALENT_QUEST_IMG[talent_id - 1]).convert('RGBA')
+        item_img = item_img.resize((240, 320))
+        im.paste(item_img, box=bbox, mask=item_img)
+        quest_draw.text(xy=xy, text=quest, font=fnt, fill=rgb)
+
+    knight_exp = int(data['user_info']['princess_knight_rank_total_exp'])
+    knight_img = Image.open(path / 'img' / 'knight_rank.png').convert('RGBA').resize((517, 61))
+    im.paste(im=knight_img, box=(701, 729), mask=knight_img)
+    quest_draw.text(xy=(735, 740), text='公主骑士经验', font=fnt, fill=rgb_w)
+    quest_draw.text(xy=(1035, 738), text=str(knight_exp), font=fnt, fill=rgb)
+    im.paste(im=knight_img, box=(701, 849), mask=knight_img)
+    quest_draw.text(xy=(725, 860), text='公主骑士RANK', font=fnt, fill=rgb_w)
+    quest_draw.text(xy=(1080, 858), text=str(knight_rank), font=fnt, fill=rgb)
+    return im
+
 async def generate_support_pic(*args, **kwargs):
     return await run_sync_func(_generate_support_pic_internal, *args, **kwargs)
 
 async def generate_info_pic(*args, **kwargs):
     return await run_sync_func(_generate_info_pic_internal, *args, **kwargs)
+
+async def generate_talent_pic(*args, **kwargs):
+    return await run_sync_func(_generate_talent_pic_internal, *args, **kwargs)

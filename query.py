@@ -88,16 +88,25 @@ async def query1(query_list: List[PCRBind], platform, function, result_storage: 
 
 async def query2(query_list: List[PCRBind], platform: int, function, result_storage: dict ={}, priority:int=Priority.query_all.value):
     data = dumps([i.pcrid for i in query_list])
+    all_data = "&all=1" if priority in (Priority.detial_query.value, Priority.query_talent.value) else ""
     async with httpx.AsyncClient() as client:
-        async with client.stream("POST", f"https://神秘api/batch?priority={priority}", data=data, headers={"Content-Type": "application/json"}, timeout=None) as response:
+        async with client.stream("POST", f"https://神秘api/batch?priority={priority}{all_data}", data=data, headers={"Content-Type": "application/json"}, timeout=None) as response:
             async for chunk in response.aiter_bytes():
                 try:
                     result = loads(chunk.decode()[6:])
                     code = result["code"]
                     if code == 0:
-                        result_storage["uid"] = result["data"]['viewer_id']
-                        result_storage["res"] = {"user_info": result["data"]}
-                        result_storage["bind_info"] = query_list[result["data"]['viewer_id']["id"]]
+                        result_data = result["data"]
+                        if "user_info" in result_data:
+                            result_storage["uid"] = result_data["user_info"]["viewer_id"]
+                            result_storage["res"] = result_data
+                        else:
+                            result_storage["uid"] = result_data["viewer_id"]
+                            result_storage["res"] = {"user_info": result_data}
+                        result_storage["bind_info"] = next(
+                            (bind for bind in query_list if bind.pcrid == result_storage["uid"]),
+                            None,
+                        )
                         await function(result_storage)
                     elif code == 503:
                         sleep_time = response.headers["retry-after"]

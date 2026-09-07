@@ -9,9 +9,9 @@ from hoshino import priv, Service
 from hoshino.config import SUPERUSERS
 from hoshino.typing import HoshinoBot, CQEvent
 from nonebot import NoticeSession, MessageSegment
-from .utils import bind_pcrid, detial_query, get_platform_id, get_tw_platform, query_loop, user_query, get_qid
+from .utils import bind_pcrid, detial_query, get_platform_id, get_tw_platform, query_loop, talent_query, user_query, get_qid
 from .query import login_all, query_all
-from .var import BaseSet, LoadBase, platform_dict, query_cache, queue_dict, private_dict, Platform, Priority
+from .var import BaseSet, LoadBase, platform_dict, query_cache, talent_cache, queue_dict, private_dict, Platform, Priority
 from .tool import refresh_account
 from .img.text2img import image_draw
 from .database.dal import pcr_sqla, PCRBind
@@ -58,7 +58,8 @@ jjc/pjjc当天排名上升次数、最后登录时间。
 0表示关闭，1表示10分钟cd，仅在2点半~3点报，
 2表示10分钟cd，全天报；3表示1分钟cd全天报。
 每天5点会把上线提醒等级3改成2，有需要的可以再次手动开启。
-11）在本群推送（限群聊发送，无需好友）'''
+11）在本群推送（限群聊发送，无需好友）
+12）{platform_name}深域查询[uid1] [uid2] ...（可同时查询多个uid）'''
     if not priv.check_priv(ev, priv.SUPERUSER):
         pic = image_draw(sv_help)
     else:
@@ -433,6 +434,28 @@ async def on_query_arena_all(bot: HoshinoBot, ev: CQEvent):
     bind = PCRBind(platform=platform_id, pcrid=int(id)) if len(
         id) > 1 else user_bind[int(id) - 1]
     await query_all([bind], platform_id, detial_query, {"bot": bot, "ev": ev, "platform":platform_id}, Priority.detial_query.value)
+
+
+@sv_b.on_prefix('深域查询')
+@sv_qu.on_prefix('渠深域查询')
+@sv_tw.on_prefix('台深域查询')
+async def on_query_talent(bot: HoshinoBot, ev: CQEvent):
+    uid_args = ev.message.extract_plain_text().strip().split()
+    if not uid_args or any(not uid.isdigit() for uid in uid_args):
+        await bot.send(ev, '格式：深域查询 uid1 uid2 ...（渠道服/台服请加对应前缀）')
+        return
+
+    uids = list(dict.fromkeys(int(uid) for uid in uid_args))
+    platform_id = get_platform_id(ev)
+    query_list = [PCRBind(platform=platform_id, pcrid=uid) for uid in uids]
+    talent_cache[ev.user_id] = []
+    await query_all(
+        query_list,
+        platform_id,
+        talent_query,
+        {"bot": bot, "ev": ev, "query_count": len(query_list)},
+        Priority.query_talent.value,
+    )
 
 
 @sv_b.on_prefix('竞技场换头像框', '更换竞技场头像框', '更换头像框')
