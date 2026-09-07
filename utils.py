@@ -109,6 +109,8 @@ async def detial_query(data):
         # 详细查询才附加公会战排名；不修改原始 profile，避免影响其他查询和缓存。
         base_res = deepcopy(res)
         clan_name = base_res.get("clan_name")
+        if not clan_name:
+            base_res["clan_name"] = "未加入公会"
         logger.info(
             "详细查询公会排名准备: uid=%s platform=%s clan=%r client=%s",
             pcrid,
@@ -118,7 +120,8 @@ async def detial_query(data):
         )
 
         async def query_rank_for_detail():
-            if not clan_name:
+            if not clan_name or not str(clan_name).strip():
+                logger.info("目标 UID 未加入公会，跳过公会排名查询: uid=%s", pcrid)
                 return None
             clan_started = time.monotonic()
             try:
@@ -152,6 +155,8 @@ async def detial_query(data):
                     render_res["clan_name"] = f'{clan_name}（{clan_rank["rank"]}名）'
                 else:
                     render_res["clan_name"] = f'{clan_name}（暂无排名）'
+            else:
+                render_res["clan_name"] = "未加入公会"
             return await _make_detail_image(
                 generate_info_pic,
                 render_res,
