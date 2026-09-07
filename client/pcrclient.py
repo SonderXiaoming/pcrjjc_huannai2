@@ -50,6 +50,18 @@ def get_api_root(qudao):
 
 config = join(curpath, "version.txt")
 
+
+def get_app_version() -> str:
+    try:
+        with open(config, encoding="utf-8") as fp:
+            version = fp.read().strip()
+        if re.fullmatch(r"\d+\.\d+\.\d+", version):
+            return version
+    except OSError:
+        pass
+    return "11.7.2"
+
+
 def init_device_id(clear_id = False):
     with open(join(curpath, 'device.json'), 'r', encoding='UTF-8') as f:
         js = json.load(f)
@@ -69,8 +81,8 @@ def init_device_id(clear_id = False):
 defaultHeaders = {
     "Accept-Encoding": "gzip",
     "User-Agent": "Dalvik/2.1.0 (Linux, U, Android 5.1.1, PCRT00 Build/LMY48Z)",
-    "X-Unity-Version": "2018.4.30f1",
-    "APP-VER": "99.9.9",
+    "X-Unity-Version": "2021.3.20f1c1",
+    "APP-VER": get_app_version(),
     "BATTLE-LOGIC-VERSION": "4",
     "BUNDLE-VER": "",
     "DEVICE": "2",
@@ -96,6 +108,7 @@ class pcrclient:
 
     def __init__(self, bsclient: bsdkclient):
         self.viewer_id = 0
+        self.clan_id = None
         self.bsdk = bsclient
         self.headers = defaultHeaders.copy()
         self.headers["PLATFORM-ID"] = self.bsdk.platform
@@ -165,13 +178,22 @@ class pcrclient:
                             else str(request).encode("utf8")
                         ),
                         headers=self.headers,
-                        timeout=20,
+                        timeout=40,
                     )
                 ).content
 
                 response = pcrclient.unpack(response)[0] if crypted else loads(response)
 
                 data_headers = response["data_headers"]
+
+                if "server_error" in response.get("data", {}):
+                    logger.warning(
+                        "pcrclient: %s result_code=%r server_error=%r request_headers=%s",
+                        apiurl,
+                        data_headers.get("result_code"),
+                        response["data"].get("server_error"),
+                        {k: self.headers.get(k) for k in ("APP-VER", "RES-VER", "MANIFEST-VER", "PLATFORM", "PLATFORM-ID", "CHANNEL-ID")},
+                    )
 
                 if "sid" in data_headers and data_headers["sid"] != "":
                     t = md5()
@@ -181,6 +203,8 @@ class pcrclient:
                 if "request_id" in data_headers:
                     self.headers["REQUEST-ID"] = data_headers["request_id"]
                 data = response["data"]
+                if "server_error" in data:
+                    logger.warning(f"pcrclient: {apiurl} server_error={data['server_error']!r}")
                 if not noerr and "server_error" in data:
                     data = data["server_error"]
                     logger.info(f"pcrclient: {apiurl} api failed {data}")
@@ -188,9 +212,15 @@ class pcrclient:
 
                 # logger.info(f'pcrclient: {apiurl} api called')
                 return (data, data_headers) if header else data
+            except ApiException:
+                # 保留服务端业务错误，避免丢失 status/result_code。
+                raise
+            except httpx.HTTPError:
+                # 让 query.py 识别网络超时并重新入队。
+                raise
             except Exception as e:
-                print(traceback.format_exc())
-                raise ApiException(f"未知错误{str(e)}", 501)
+                logger.warning("pcrclient: %s 请求处理异常", apiurl, exc_info=True)
+                raise ApiException(f"未知错误{str(e)}", 501) from e
 
     async def check_gamestart(self):
         gamestart, data_headers = await self.callapi(
@@ -260,6 +290,26 @@ class pcrclient:
 
         await self.check_dangerous()
         await self.check_gamestart()
+        await self.refresh_clan_id()
 
         # await self.callapi('/check/check_agreement', {})
+
+    async def refresh_clan_id(self):
+        """读取登录账号所属公会 ID，供需要 clan_id 的官方接口使用。"""
+        data = await self.callapi(
+            "/home/index",
+            {
+                "message_id": 1,
+                "tips_id_list": [],
+                "is_first": 1,
+                "gold_history": 0,
+            },
+        )
+        user_clan = data.get("user_clan") if isinstance(data, dict) else None
+        clan_id = user_clan.get("clan_id") if isinstance(user_clan, dict) else None
+        try:
+            self.clan_id = int(clan_id) if clan_id else None
+        except (TypeError, ValueError):
+            self.clan_id = None
+        logger.info("登录账号公会信息: clan_id=%s", self.clan_id)
 
