@@ -35,6 +35,8 @@ async def _query(client: Union[tw_pcrclient, pcrclient],  platform_id: int):
             result_storage["res"] = res
             result_storage["uid"] = uid
             result_storage["bind_info"] = info
+            # 详细查询可复用同一条已登录的官方客户端会话，调用游戏内公会接口。
+            result_storage["client"] = client
             await callback(result_storage)
         except ApiException as e:
             if str(e) == "服务器在维护":
@@ -130,13 +132,14 @@ async def login_all():
         else:
             client = pcrclient(bsdkclient(i.account, i.password, i.platform))
         
-        """
         try:
             await client.login()
-        except:
-            logger.warn(f"ID{int(i.viewer_id) or i.account}, 服务器：{platform_dict.get(i.platform, 'B服')}加载失败，后续会尝试自动重连")
-        """
-        
+        except Exception:
+            logger.warning(
+                f"ID{int(i.viewer_id) or i.account}, 服务器：{platform_dict.get(i.platform, 'B服')}登录失败，查询时将自动重试"
+            )
+            logger.warning(traceback.format_exc())
+
         if i.platform != Platform.tw_id.value:
             if not queue_dict[i.platform]:
                 queue_dict[i.platform] = asyncio.PriorityQueue()

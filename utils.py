@@ -1,6 +1,7 @@
 import asyncio
 from copy import deepcopy
 from datetime import datetime
+import time
 import traceback
 from typing import List
 from .img.text2img import image_draw
@@ -8,7 +9,8 @@ from hoshino import util
 from hoshino.util import pic2b64
 from .database.dal import JJCHistory, pcr_sqla, PCRBind
 from .query import query_all
-from .img.create_img import generate_info_pic, generate_support_pic
+from .img.create_img import generate_info_pic, generate_support_pic, generate_talent_pic
+from .clan_rank import query_clan_battle_rank
 from ..multicq_send import group_send, private_send
 from nonebot import MessageSegment, logger
 from hoshino.typing import CQEvent
@@ -78,6 +80,24 @@ async def query_rank(data):
             await sendNotice(res[2], last[2], bind, NoticeType.online.value)
 
 
+async def _make_detail_image(generator, *args):
+    """生成并转换单张详细查询图片，失败时返回 None。"""
+    started = time.monotonic()
+    try:
+        image = await generator(*args)
+        encoded = await asyncio.get_running_loop().run_in_executor(None, pic2b64, image)
+        return MessageSegment.image(encoded)
+    except Exception:
+        logger.warning("详细查询图片生成失败: generator=%s", getattr(generator, "__name__", repr(generator)), exc_info=True)
+        return None
+    finally:
+        logger.info(
+            "详细查询图片任务结束: generator=%s elapsed=%.2fs",
+            getattr(generator, "__name__", repr(generator)),
+            time.monotonic() - started,
+        )
+
+
 async def detial_query(data):
     res = data["res"]
     bot = data["bot"]
@@ -85,17 +105,100 @@ async def detial_query(data):
     pcrid = data["uid"]
     platfrom = data["platform"]
     try:
-        logger.info('开始生成竞技场查询图片...')  # 通过log显示信息
-        result_image = await generate_info_pic(res, pcrid, platfrom)
-        result_image = pic2b64(result_image)  # 转base64发送，不用将图片存本地
-        result_image = MessageSegment.image(result_image)
-        result_support = await generate_support_pic(res, pcrid)
-        result_support = pic2b64(result_support)  # 转base64发送，不用将图片存本地
-        result_support = MessageSegment.image(result_support)
-        logger.info('竞技场查询图片已准备完毕！')
-        await bot.send_group_msg(self_id=ev.self_id, group_id=int(ev.group_id), message=f"\n{str(result_image)}\n{result_support}")
+        started = time.monotonic()
+        # 详细查询才附加公会战排名；不修改原始 profile，避免影响其他查询和缓存。
+        base_res = deepcopy(res)
+        clan_name = base_res.get("clan_name")
+        if not clan_name:
+            base_res["clan_name"] = "未加入公会"
+        logger.info(
+            "详细查询公会排名准备: uid=%s platform=%s clan=%r client=%s",
+            pcrid,
+            platfrom,
+            clan_name,
+            type(data.get("client")).__name__ if data.get("client") is not None else None,
+        )
+
+        async def query_rank_for_detail():
+            if not clan_name or not str(clan_name).strip():
+                logger.info("目标 UID 未加入公会，跳过公会排名查询: uid=%s", pcrid)
+                return None
+            clan_started = time.monotonic()
+            try:
+                result = await query_clan_battle_rank(
+                    data.get("client"),
+                    clan_name,
+                    platfrom,
+                    target_uid=pcrid,
+                )
+                logger.info(
+                    "详细查询公会排名完成: elapsed=%.2fs result=%r",
+                    time.monotonic() - clan_started,
+                    result,
+                )
+                return result
+            except Exception:
+                logger.warning("详细查询公会排名失败", exc_info=True)
+                return None
+
+        rank_task = asyncio.create_task(query_rank_for_detail())
+
+        async def make_info_image():
+            render_res = deepcopy(base_res)
+            clan_rank = await rank_task
+            if clan_name:
+                if clan_rank and clan_rank.get("unavailable"):
+                    render_res["clan_name"] = f'{clan_name}（{clan_rank["unavailable"]}）'
+                elif clan_rank and clan_rank.get("rank_overflow"):
+                    render_res["clan_name"] = f'{clan_name}（200+名）'
+                elif clan_rank:
+                    render_res["clan_name"] = f'{clan_name}（{clan_rank["rank"]}名）'
+                else:
+                    render_res["clan_name"] = f'{clan_name}（暂无排名）'
+            else:
+                render_res["clan_name"] = "未加入公会"
+            return await _make_detail_image(
+                generate_info_pic,
+                render_res,
+                pcrid,
+                platfrom,
+            )
+
+        logger.info("开始并行生成竞技场查询图片...")
+        image_results = await asyncio.gather(
+            make_info_image(),
+            _make_detail_image(generate_support_pic, deepcopy(base_res), pcrid),
+            _make_detail_image(generate_talent_pic, deepcopy(base_res), pcrid),
+            return_exceptions=True,
+        )
+        image_results = [
+            None if isinstance(image, Exception) else image
+            for image in image_results
+        ]
+        successful_images = [image for image in image_results if image is not None]
+        logger.info(
+            "竞技场查询图片已准备完毕: count=%s total_elapsed=%.2fs",
+            len(successful_images),
+            time.monotonic() - started,
+        )
+        if not successful_images:
+            await bot.send_group_msg(
+                self_id=ev.self_id,
+                group_id=int(ev.group_id),
+                message="查询失败，图片生成未成功。",
+            )
+            return
+        message = "\n" + "\n".join(str(image) for image in successful_images)
+        await bot.send_group_msg(self_id=ev.self_id, group_id=int(ev.group_id), message=message)
     except ApiException as e:
         await bot.send_group_msg(self_id=ev.self_id, group_id=int(ev.group_id), message=f'查询出错，{e}')
+    except Exception:
+        logger.warning("详细查询处理失败", exc_info=True)
+        await bot.send_group_msg(
+            self_id=ev.self_id,
+            group_id=int(ev.group_id),
+            message="查询失败，请稍后重试。",
+        )
 
 
 async def user_query(data: dict):
